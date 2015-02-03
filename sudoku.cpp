@@ -33,12 +33,12 @@ void Sudoku::updateGrid(const int r, const int c, const int v)
 	//Update current row
 	for(int cc = 0; cc < 9; ++cc)
 		if(cc != c)
-			grid[r][cc].eraseValue(v);
+			updateGridAction(r, cc, v);
 
 	//Update current col
 	for(int rr = 0; rr < 9; ++rr)
 		if(rr != r)
-			grid[rr][c].eraseValue(v);
+			updateGridAction(rr, c, v);
 
 	//Update current unit
 	int ur = r/3;
@@ -46,7 +46,13 @@ void Sudoku::updateGrid(const int r, const int c, const int v)
 	for(int rr = 0; rr < 3; ++rr)
 		for(int cc = 0; cc < 3; ++cc)
 			if(rr != r && cc != c)
-				grid[3*ur+rr][3*uc+cc].eraseValue(v);
+				updateGridAction(3*ur+rr, 3*uc+cc, v);
+}
+
+void Sudoku::updateGridAction(const int r, const int c, const int v)
+{
+	if(grid[r][c].eraseValue(v) && grid[r][c].hasOnlyOnePossibleValue())
+		updateGrid(r, c, grid[r][c].getFirstPossibleValue());
 }
 
 std::ostream& operator<<(std::ostream& os, const Sudoku& s)
@@ -123,4 +129,64 @@ bool Sudoku::isValidAndFull() const
 			valid = grid[r][c].hasOnlyOnePossibleValue();
 
 	return valid ? isValid() : false;
+}
+
+//Solve using depth-first-search and using heuristic starting with the unit which has the minimum number of possibles solutions, then using first block.
+bool Sudoku::solve(Sudoku& s)
+{
+	if(s.isValid())
+		if(!s.isValidAndFull())
+		{
+			int ux, uy;
+			s.findUnitToStartSolving(ux, uy);
+			int bx = -1;
+			int by = -1;
+
+			for(int r = 0; bx == -1 && r < 3; ++r)
+				for(int c = 0; bx == -1 && c < 3; ++c)
+					if(!s.grid[3*uy+r][3*ux+c].hasOnlyOnePossibleValue())
+					{
+						bx = 3*uy+r;
+						by = 3*ux+c;
+					}
+
+			std::vector<int> possibleValues = s.grid[bx][by].getPossibleValues();
+			bool solved = false;
+			for(int i = 0; !solved && i < possibleValues.size(); ++i)
+			{
+				Sudoku ss(s);
+				ss.grid[bx][by].setOnlyOneValue(possibleValues[i]);
+				ss.updateGrid(bx, by, possibleValues[i]);
+				
+				solved = solve(ss);
+				if(solved)
+					s = ss;
+			}
+			return solved;
+		}
+		else
+			return true;
+	else
+		return false;
+}	
+
+void Sudoku::findUnitToStartSolving(int& uxMin, int& uyMin) const
+{
+	uxMin = uyMin = 0;
+	int min = 9*9;
+
+	for(int ux = 0; ux < 3; ++ux)
+		for(int uy = 0; uy < 3; ++uy)
+		{
+			int currMin = 0;
+			for(int r = 0; r < 3; ++r)
+				for(int c = 0; c < 3; ++c)
+					currMin += grid[uy*3+r][ux*3+c].countPossibleValues();
+			if(currMin > 0 && currMin < min)
+			{
+				uxMin = ux;
+				uyMin = uy;
+				min = currMin;
+			}
+		}
 }
