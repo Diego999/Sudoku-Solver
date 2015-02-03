@@ -124,15 +124,3 @@ bool Sudoku::isValidAndFull() const
 
 	return valid ? isValid() : false;
 }
-
-#include <iostream>
-
-int main(int argc, char* argv[])
-{
-	Sudoku s;
-	s.setValue(0,4);
-	s.setValue(3, 8);
-	std::cout << s << std::endl;
-	return 0;
-
-}
